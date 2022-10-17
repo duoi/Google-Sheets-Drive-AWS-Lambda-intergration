@@ -10,10 +10,19 @@ SCOPES = {
     "sheets": ['https://www.googleapis.com/auth/spreadsheets'],
     "drive": ['https://www.googleapis.com/auth/drive.file']
 }
-CREDENTIAL_KEYS = ['type', 'project_id', 'private_key_id', 'private_key', 'client_email', 'client_id', 'auth_uri', 'token_uri', 'auth_provider_x509_cert_url', 'client_x509_cert_url']
+CREDENTIAL_KEYS = ['type', 'project_id', 'private_key_id', 'private_key', 'client_email', 'client_id', 'auth_uri',
+                   'token_uri', 'auth_provider_x509_cert_url', 'client_x509_cert_url']
 
 
 def authenticate(scopes):
+    """
+    Create the `credentials` object from the environment variables and tie it
+    to scopes. This is used by all other functions that need to interact with
+    Google.
+
+    :param scopes:
+    :return:
+    """
     config = {}
     for key in CREDENTIAL_KEYS:
         # environment variables and \n don't go well together, so we b64 encode it
@@ -28,6 +37,16 @@ def authenticate(scopes):
 
 
 def adjust_role(credentials, attributes, role="reader"):
+    """
+    Modify the roles of an existing Sheet. Takes an optional "role" parameter
+    which can be used to specify any other role that might be expected, however,
+    it is unlikely you will need to use this.
+
+    :param credentials:
+    :param attributes:
+    :param role:
+    :return:
+    """
     try:
         drive_service = build('drive', 'v3', credentials=credentials)
 
@@ -45,6 +64,16 @@ def adjust_role(credentials, attributes, role="reader"):
 
 
 def create_sheet(credentials, *args, **kwargs):
+    """
+    This function both creates a sheet and then assigns a default `editor` role to
+    the Sheet. It takes no other parameters, the args and kwargs exist to keep the
+    `lambda_handler` function cleaner/more consistent and capture an `attributes`
+
+    :param credentials:
+    :param args:
+    :param kwargs:
+    :return:
+    """
     try:
         service = build('sheets', 'v4', credentials=credentials)
         spreadsheet = service.spreadsheets().create(fields='spreadsheetId').execute()
@@ -65,6 +94,16 @@ def create_sheet(credentials, *args, **kwargs):
 
 
 def count_rows(credentials, attributes):
+    """
+    Counts the non-null rows of a given document excluding the header. This acts exclusively
+    on the first column, there *may* be some value in iterating across all the columns to see
+    if they're empty too, or if there are other skippable values outside of null such as blank
+    spaces or similar, but the assumption here is that we don't need to do that.
+
+    :param credentials:
+    :param attributes:
+    :return:
+    """
     try:
         service = build('sheets', 'v4', credentials=credentials)
         sheet = service.spreadsheets()
@@ -84,6 +123,14 @@ def count_rows(credentials, attributes):
 
 
 def lambda_handler(event, context):
+    """
+    An `action` instructing this handler how to behave *must* be passed in
+    or it will return a 400.
+
+    :param event:
+    :param context:
+    :return:
+    """
     if not event.get("action"):
         return {"statusCode": 400, "body": "No action provided to Lambda"}
 
